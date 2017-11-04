@@ -7,13 +7,30 @@ struct Field {
     end_col: usize
 }
 
+impl Field {
+    fn extract_num(&self, line: &str) -> f64 {
+        line[self.start_col..self.end_col].trim().replace("*", "").parse().unwrap()
+    }
+
+    fn extract_str<'a>(&'a self, line: &'a str) -> &'a str {
+        line[self.start_col..self.end_col].trim()
+    }
+}
+
 fn main() {   
     weather();
     football();
-    if let Some((spread, name)) = football2("weather.dat", 4, 10, 10, 14, 0, 4) {
+    let max_temp = Field { start_col: 4, end_col:10};
+    let min_temp = Field { start_col: 10, end_col: 14};
+    let day = Field { start_col: 0, end_col: 4};
+    if let Some((spread, name)) = football2("weather.dat", max_temp, min_temp, day) {
         println!("Smallest spread was {} on day {}", spread, name);
     }
-    if let Some((spread, name)) = football2("football.dat", 44, 46, 51, 53, 7, 23) {
+
+    let goals_for = Field { start_col: 44, end_col: 46};
+    let goals_against = Field { start_col: 51, end_col: 53};
+    let team_name = Field { start_col: 7, end_col: 23};
+    if let Some((spread, name)) = football2("football.dat", goals_for, goals_against, team_name) {
         println!("Smallest spread was {} for team {}", spread, name);
     }
 }
@@ -65,12 +82,9 @@ fn football() {
 }
 
 fn football2(filename: &str,
-             a_col_start: usize,
-             a_col_end: usize,
-             b_col_start: usize,
-             b_col_end: usize,
-             name_col_start: usize,
-             name_col_end: usize) -> Option<(f64, String)> {
+             a_col: Field,
+             b_col: Field,
+             id_col: Field) -> Option<(f64, String)> {
     let f = File::open(filename).unwrap();
     let file = BufReader::new(&f);
     let mut i = 0;
@@ -81,8 +95,8 @@ fn football2(filename: &str,
         i += 1;
         if i > 1 {
             l = line.unwrap();
-            let a: &f64 = &l[a_col_start..a_col_end].trim().replace("*", "").parse().unwrap();
-            let b: &f64 = &l[b_col_start..b_col_end].trim().replace("*", "").parse().unwrap();
+            let a: f64 = a_col.extract_num(&l);
+            let b: f64 = b_col.extract_num(&l);
             let spread = a - b;
             if let Some(smallest_spread_val) = smallest_spread {
                 if spread < smallest_spread_val {
@@ -96,7 +110,7 @@ fn football2(filename: &str,
         }
     }
     if let Some(line) = chosen_line {
-        let team = &line[name_col_start..name_col_end].trim();
+        let team = id_col.extract_str(&line);
         return Some((smallest_spread.unwrap(), team.to_string()))
     } else {
         return None
