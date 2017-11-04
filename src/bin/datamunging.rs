@@ -2,13 +2,20 @@ use std::io::BufReader;
 use std::io::BufRead;
 use std::fs::File;
 
+struct Field {
+    start_col: usize,
+    end_col: usize
+}
+
 fn main() {   
     weather();
     football();
-    let (spread, name) = football2("weather.dat", 4, 10, 10, 14, 0, 4);
-    println!("Smallest spread was {} on day {}", spread, name);
-    let (spread, name) = football2("football.dat", 44, 46, 51, 53, 7, 23);
-    println!("Smallest spread was {} for team {}", spread, name);
+    if let Some((spread, name)) = football2("weather.dat", 4, 10, 10, 14, 0, 4) {
+        println!("Smallest spread was {} on day {}", spread, name);
+    }
+    if let Some((spread, name)) = football2("football.dat", 44, 46, 51, 53, 7, 23) {
+        println!("Smallest spread was {} for team {}", spread, name);
+    }
 }
 
 fn weather() {   
@@ -63,12 +70,12 @@ fn football2(filename: &str,
              b_col_start: usize,
              b_col_end: usize,
              name_col_start: usize,
-             name_col_end: usize) -> (f64, String) {
+             name_col_end: usize) -> Option<(f64, String)> {
     let f = File::open(filename).unwrap();
     let file = BufReader::new(&f);
     let mut i = 0;
-    let mut smallest_spread = 1_000_000.0;
-    let mut chosen_line : String = String::new();
+    let mut smallest_spread = None;
+    let mut chosen_line = None;
     let mut l: String = String::new();
     for line in file.lines() {
         i += 1;
@@ -77,12 +84,21 @@ fn football2(filename: &str,
             let a: &f64 = &l[a_col_start..a_col_end].trim().replace("*", "").parse().unwrap();
             let b: &f64 = &l[b_col_start..b_col_end].trim().replace("*", "").parse().unwrap();
             let spread = a - b;
-            if spread < smallest_spread {
-                smallest_spread = spread;
-                chosen_line = l;
+            if let Some(smallest_spread_val) = smallest_spread {
+                if spread < smallest_spread_val {
+                    smallest_spread = Some(spread);
+                    chosen_line = Some(l);
+                }
+            } else {
+                smallest_spread = Some(spread);
+                chosen_line = Some(l);
             }
         }
     }
-    let team = &chosen_line[name_col_start..name_col_end].trim();
-    return (smallest_spread, team.to_string())
+    if let Some(line) = chosen_line {
+        let team = &line[name_col_start..name_col_end].trim();
+        return Some((smallest_spread.unwrap(), team.to_string()))
+    } else {
+        return None
+    }
 }
