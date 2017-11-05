@@ -1,24 +1,25 @@
 extern crate bit_vec;
 use bit_vec::BitVec;
+use std::num::Wrapping;
 
-fn jenkins_one_at_a_time_hash(bytes: &[u8]) -> u32 {
-    let mut hash: u32 = 0;
+fn jenkins_one_at_a_time_hash(bytes: &[u8]) -> Wrapping<u32> {
+    let mut hash = Wrapping(0u32);
     for byte in bytes {
-        hash = hash.wrapping_add(*byte as u32);
-        hash = hash.wrapping_add(hash << 10);
+        hash += Wrapping(*byte as u32);
+        hash += hash << 10;
         hash ^= hash >> 6;
     }
-    hash = hash.wrapping_add(hash << 3);
+    hash += hash << 3;
     hash ^= hash >> 11;
-    hash = hash.wrapping_add(hash << 15);
+    hash += hash << 15;
     hash
 }
 
 
-fn bernstein_hash(bytes: &[u8]) -> u32 {
-    let mut hash: u32 = 0;
+fn bernstein_hash(bytes: &[u8]) -> Wrapping<u32> {
+    let mut hash = Wrapping(0u32);
     for byte in bytes {
-        hash = hash.wrapping_mul(33) ^ (*byte as u32);
+        hash = hash * Wrapping(33) ^ Wrapping(*byte as u32);
     }
     hash
 }
@@ -37,8 +38,10 @@ impl BloomFilter {
         let hash_fn1 = jenkins_one_at_a_time_hash;
         let hash_fn2 = bernstein_hash;
         for x in 1..11 {
-            let hash = hash_fn1(input.as_bytes()).wrapping_add(hash_fn2(input.as_bytes()).wrapping_mul(x)) as usize;
-            self.bits.set(hash % self.size, true);
+            let wx = Wrapping(x);
+            let hash = hash_fn1(input.as_bytes()) + (wx* hash_fn2(input.as_bytes()));
+            let index = hash.0 as usize % self.size;
+            self.bits.set(index, true);
         }
     }
 
@@ -46,8 +49,10 @@ impl BloomFilter {
         let hash_fn1 = jenkins_one_at_a_time_hash;
         let hash_fn2 = bernstein_hash;
         for x in 1..11 {
-            let hash = hash_fn1(input.as_bytes()).wrapping_add(hash_fn2(input.as_bytes()).wrapping_mul(x)) as usize;
-            if self.bits[hash % self.size] == false {
+            let wx = Wrapping(x);
+            let hash = hash_fn1(input.as_bytes()) + (wx* hash_fn2(input.as_bytes()));
+            let index = hash.0 as usize % self.size;
+            if self.bits[index] == false {
                 return false;
             }
         }
@@ -56,8 +61,10 @@ impl BloomFilter {
 }
 
 fn main() {
-    println!("{} maps to {}", "hello world", jenkins_one_at_a_time_hash("hello world".as_bytes()));
-    println!("{} maps to {}", "hello world", bernstein_hash("hello world".as_bytes()));
+    println!("{} maps to {}", "hello world",
+             jenkins_one_at_a_time_hash("hello world".as_bytes()).0);
+    println!("{} maps to {}", "hello world",
+             bernstein_hash("hello world".as_bytes()).0);
     let mut bf = BloomFilter::new(1_000_000);
     println!("hello in set: {}", bf.contains("hello"));
     println!("world in set: {}", bf.contains("world"));
