@@ -34,25 +34,24 @@ impl BloomFilter {
         BloomFilter { size: size, bits: BitVec::from_elem(size, false) }
     }
 
+    fn index(&self, input: &str, hash_num: u32) -> usize {
+        let wx = Wrapping(hash_num);
+        let hash = jenkins_one_at_a_time_hash(input.as_bytes()) +
+                   (wx * bernstein_hash(input.as_bytes()));
+        hash.0 as usize % self.size
+    }
+
     fn set(&mut self, input: &str) {
-        let hash_fn1 = jenkins_one_at_a_time_hash;
-        let hash_fn2 = bernstein_hash;
-        for x in 1..11 {
-            let wx = Wrapping(x);
-            let hash = hash_fn1(input.as_bytes()) + (wx* hash_fn2(input.as_bytes()));
-            let index = hash.0 as usize % self.size;
-            self.bits.set(index, true);
+        for x in 0..10 {
+            let idx = self.index(input, x);
+            self.bits.set(idx, true);
         }
     }
 
     fn contains(&self, input: &str) -> bool {
-        let hash_fn1 = jenkins_one_at_a_time_hash;
-        let hash_fn2 = bernstein_hash;
-        for x in 1..11 {
-            let wx = Wrapping(x);
-            let hash = hash_fn1(input.as_bytes()) + (wx* hash_fn2(input.as_bytes()));
-            let index = hash.0 as usize % self.size;
-            if self.bits[index] == false {
+        for x in 0..10 {
+            let idx = self.index(input, x);
+            if self.bits[idx] == false {
                 return false;
             }
         }
