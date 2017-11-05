@@ -5,3 +5,4 @@ authors = ["Rob Day <rkd@rkd.me.uk>"]
 
 [dependencies]
 bit-vec = "0.4.4"
+rand = "0.3"
